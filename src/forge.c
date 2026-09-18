@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-3.0-or-later WITH LicenseRef-Forge-BuildScript-Exception */
+/* SPDX-License-Identifier: GPL-3.0-or-later WITH
+ * LicenseRef-Forge-BuildScript-Exception */
 /* Copyright (C) 2026 The Forge development team */
 /* Additional permission under GPLv3+ §7 applies; see LICENSE. */
 
@@ -7,9 +8,9 @@
 #include <string.h>
 
 #include "cli.h"
-#include "parser.h"
-#include "generate.h"
 #include "forge_os.h"
+#include "generate.h"
+#include "parser.h"
 
 char *program_name;
 
@@ -196,9 +197,12 @@ static int has_build_h(const char *dir) {
 static char *resolve_include_dir(void) {
   const char *prefix = getenv("FORGE_PREFIX");
   char *exe_dir = os_exe_dir();
-  /* 私有 include 位(<prefix>/lib/forge/include;无 prefix 时从可执行
-     文件的上级 lib 推断):build.h 太通用,不放进全局 /usr/include,
-     避免与其他包撞名,也避免误用他人同名头 */
+  /* Private include directory: <prefix>/lib/forge/include. If no prefix is
+   * set, infer it from <exe-dir>/../lib/forge/include. build.h is too generic
+   * a name for the global /usr/include; keeping it private avoids collisions
+   * with other packages and prevents accidentally using another package's
+   * same-named header.
+   */
   char *priv = NULL;
   char *exe_priv = NULL;
   char *exe_inc = exe_dir ? path_join(exe_dir, "include") : NULL;
@@ -275,7 +279,6 @@ static char *resolve_lib(int compiler) {
   dirs[n++] = forge_strdup("/usr/local/lib/forge");
   dirs[n++] = forge_strdup("/usr/local/lib");
   dirs[n++] = forge_strdup("/usr/lib");
-  free(exe_dir);
 
   for (int i = 0; i < n; i++) {
     for (int k = 0; names[k]; k++) {
@@ -291,6 +294,7 @@ static char *resolve_lib(int compiler) {
       free(p);
     }
   }
+  free(exe_dir);
   fprintf(stderr, "%s: library", program_name);
   for (int k = 0; names[k]; k++)
     fprintf(stderr, " %s", names[k]);
@@ -304,9 +308,9 @@ static char *resolve_lib(int compiler) {
   return NULL;
 }
 
-//TODO: later, scan symbols with symbol_lister once compiled to obj
+// TODO: later, scan symbols with symbol_lister once compiled to obj
 //(current implementation: textual scan for identifiers after function(;
-//an export list is enough, though not exact)
+// an export list is enough, though not exact)
 static char **collect_export_symbols(const char *build_c) {
   size_t cap = 4, n = 0;
   char **flags = calloc(cap, sizeof(char *));
@@ -322,9 +326,9 @@ static char **collect_export_symbols(const char *build_c) {
         char *name = p + strlen("function(");
         while (*name == ' ' || *name == '\t')
           name++;
-        size_t len =
-            strspn(name,
-                   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
+        size_t len = strspn(
+            name,
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
         if (len > 0 && name[len] == ')') {
           char flag[128];
           snprintf(flag, sizeof(flag), "/EXPORT:function_%.*s", (int)len, name);
@@ -480,12 +484,13 @@ static char *conf_output_name(const char *content, int *bad) {
 int generate_build(char *target, int compiler, char *compiler_path,
                    char *conf_content) {
   if (!target || !*target || !compiler_path || !*compiler_path) {
-    fprintf(stderr, "%s: invalid arguments (target or compiler path empty)\n", program_name);
+    fprintf(stderr, "%s: invalid arguments (target or compiler path empty)\n",
+            program_name);
     return -1;
   }
   if (compiler != GCC && compiler != CLANG && compiler != MSVC) {
-    fprintf(stderr, "%s: unknown compiler (%d), expected GCC, CLANG or MSVC\n", program_name, 
-            compiler);
+    fprintf(stderr, "%s: unknown compiler (%d), expected GCC, CLANG or MSVC\n",
+            program_name, compiler);
     return -1;
   }
 
@@ -520,7 +525,8 @@ int generate_build(char *target, int compiler, char *compiler_path,
     return -1;
   }
   if (os_mkdir_r(forge_dir) != 0) {
-    fprintf(stderr, "%s: cannot create directory %s\n", program_name, forge_dir);
+    fprintf(stderr, "%s: cannot create directory %s\n", program_name,
+            forge_dir);
     free(forge_dir);
     free(incflag);
     free(inc);
@@ -559,7 +565,8 @@ int generate_build(char *target, int compiler, char *compiler_path,
     compile_extra[i + 1] = conf_defs[i];
 
   char *srcs[] = {build_c, NULL};
-  int ret = gen_compile(compiler_path, compiler, srcs, forge_dir, compile_extra);
+  int ret =
+      gen_compile(compiler_path, compiler, srcs, forge_dir, compile_extra);
   for (size_t i = 0; conf_defs[i]; i++)
     free(conf_defs[i]);
   free(conf_defs);
@@ -720,19 +727,20 @@ int forge_main(char *target) {
         goto end;
       }
       free(comp);
-    } else compiler = GCC;
+    } else
+      compiler = GCC;
 
-    if(!compiler_path) {
-      switch(compiler) {
-        case GCC:
-          compiler_path = forge_strdup("gcc");
-          break;
-        case CLANG:
-          compiler_path = forge_strdup("clang");
-          break;
-        case MSVC:
-          compiler_path = forge_strdup("cl");
-          break;
+    if (!compiler_path) {
+      switch (compiler) {
+      case GCC:
+        compiler_path = forge_strdup("gcc");
+        break;
+      case CLANG:
+        compiler_path = forge_strdup("clang");
+        break;
+      case MSVC:
+        compiler_path = forge_strdup("cl");
+        break;
       }
     }
 
