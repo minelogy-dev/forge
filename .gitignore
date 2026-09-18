@@ -1,0 +1,8 @@
+.vscode
+.clangd
+.forge/
+/make
+/build/
+/test/
+/temp/
+/opt/

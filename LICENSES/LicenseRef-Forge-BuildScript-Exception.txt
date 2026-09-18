@@ -1,0 +1,33 @@
+SPDX-License-Identifier: LicenseRef-Forge-BuildScript-Exception
+SPDX-FileCopyrightText: 2026 The Forge development team
+
+Additional permission under GNU GPL version 3 or later, section 7
+
+For the purposes of this permission, a "build script" is a file that
+Forge uses as the build definition or the build entry point of a
+project, whatever its name, extension, or location (for example, the
+default `build.c`).
+
+You may copy portions of this software into a build script and modify
+them as needed.  By doing so, you are granted an additional permission
+not to apply the copyleft of this License to the build script or its
+build artifacts: you need not license the build script or its build
+artifacts under this License, nor make their source code available,
+and you need not credit the author for the copied portions.
+
+With respect to build artifacts, this permission is declaratory: under
+section 2, the output of running a covered work is covered only if its
+content constitutes a covered work, and build output as such is not a
+derivative work.  It is not, and must not be read as, a grant to use
+Forge or its runtime library as a general-purpose library embedded in
+an application unrelated to building software; such use remains subject
+to this License.
+
+The permission is granted on the condition that you do not:
+- misrepresent the authorship of the copied portions (no false
+  attribution); or
+- claim exclusive copyright over the portions copied from this software.
+
+Note: copies kept in a build script are maintained by you, and internal
+symbols of this software may change in future releases.  This note is
+informational and is not a condition of this permission.
