@@ -78,32 +78,38 @@ add_define("FORGE_VERSION", "\"" FORGE_VERSION "\"");
 
   /* Header sync: keep build/output/include in step with lib/include so
      the host forge (<exe_dir>/include resolves first) and every build
-     in this checkout are self-contained. Runs on every full ./make. */
-  if (os_mkdir_r("build/output/include") != 0)
-    return -1;
-  {
-    int n = 0;
-    char **names = os_listdir("lib/include", &n);
-    if (!names)
-      return -1;
-    for (int i = 0; i < n; i++) {
-      if (!strstr(names[i], ".h"))
-        continue;
-      char *src = os_path_join("lib/include", names[i]);
-      char *dst = os_path_join("build/output/include", names[i]);
-      int r = (!src || !dst) ? -1 : os_copy_file(src, dst);
-      free(src);
-      free(dst);
-      if (r != 0) {
-        for (int j = 0; j < n; j++)
-          free(names[j]);
-        free(names);
+     in this checkout are self-contained. The public headers live in a
+     target: language = ALL collects every file under lib/include
+     (adding a header there is all it takes — no list elsewhere to
+     update), and the loop below copies them preserving the directory
+     structure (headers are not assumed to be flat). No compile() here:
+     the copy IS the export. */
+  target("include") {
+    set_type(FORGE_SOURCE);
+    set_language(ALL);
+    add_sources_r("lib/include");
+    for (source_t *s = _target->sources; s; s = s->next) {
+      /* Collected paths are absolute project-root relative; strip the
+         lib/include/ prefix to reproduce the layout under the sync dir */
+      char *rel = os_path_file_rel(s->file, NULL);
+      const char *leaf = rel;
+      if (rel && strncmp(rel, "lib/include/", 12) == 0)
+        leaf = rel + 12;
+      char *dd = leaf ? os_path_join("build/output/include", leaf) : NULL;
+      char *parent = dd ? os_path_dirname(dd) : NULL;
+      int rc = (!dd || !parent || os_mkdir_r(parent) != 0)
+                   ? -1
+                   : os_copy_file(s->file, dd);
+      if (rc != 0) {
+        free(rel);
+        free(dd);
+        free(parent);
         return -1;
       }
+      free(rel);
+      free(dd);
+      free(parent);
     }
-    for (int i = 0; i < n; i++)
-      free(names[i]);
-    free(names);
   }
   return 0;
 }
@@ -118,7 +124,36 @@ default_test();
  * on Windows). */
 
 #if LINUX
-int function_build(int argc, char **argv); /* reused by gen_deb */
+
+/* Recursive copy of every entry under src_dir into dst_dir (os_copy_file
+   handles files only). Used for the synced build/output/include, whose
+   layout is not assumed flat. */
+static int copy_dir_r(const char *src_dir, const char *dst_dir) {
+  if (os_mkdir_r(dst_dir) != 0)
+    return -1;
+  int n = 0;
+  char **names = os_listdir(src_dir, &n);
+  if (!names)
+    return -1;
+  int ret = 0;
+  for (int i = 0; i < n && ret == 0; i++) {
+    char *s = os_path_join(src_dir, names[i]);
+    char *d = os_path_join(dst_dir, names[i]);
+    if (!s || !d) {
+      ret = -1;
+    } else if (os_path_is_dir(s)) {
+      ret = copy_dir_r(s, d);
+    } else if (os_copy_file(s, d) != 0) {
+      ret = -1;
+    }
+    free(s);
+    free(d);
+  }
+  for (int i = 0; i < n; i++)
+    free(names[i]);
+  free(names);
+  return ret;
+}
 
 /* Copy the artifacts to the system paths under prefix (shared by
    install and gen_deb's data root); returns 0 on success. Executables
@@ -161,26 +196,11 @@ static int install_to(const char *prefix) {
     ret = -1;
   free(dst);
 
-  /* Headers: every .h under lib/include */
-  int n = 0;
-  char **names = os_listdir("lib/include", &n);
-  if (!names) {
+  /* Headers: the synced build product build/output/include (install and
+     gen_deb run function_build first, so the sync has happened).
+     Recursive — the header layout is not assumed flat. */
+  if (copy_dir_r("build/output/include", inc) != 0)
     ret = -1;
-  } else {
-    for (int i = 0; i < n; i++) {
-      if (!strstr(names[i], ".h"))
-        continue;
-      char *src = os_path_join("lib/include", names[i]);
-      char *dd = os_path_join(inc, names[i]);
-      if (os_copy_file(src, dd) != 0)
-        ret = -1;
-      free(src);
-      free(dd);
-    }
-    for (int i = 0; i < n; i++)
-      free(names[i]);
-    free(names);
-  }
 
   free(bin);
   free(lib);
@@ -224,7 +244,11 @@ function(install) {
   const char *prefix =
       (argc > 1 && argv[1] && *argv[1]) ? argv[1] : "/usr/local";
 #if LINUX
-  int r = install_to(prefix);
+  /* Ensure the artifacts (including the header sync) are fresh first */
+  int r = function_build(argc, argv);
+  if (r != 0)
+    return r;
+  r = install_to(prefix);
   if (r != 0)
     fprintf(stderr,
             "forge: install to %s failed\n"

@@ -34,6 +34,7 @@
  * @brief Programming language used by the target.
  */
 typedef enum {
+  ALL,
   C,   /**< the C language */
   CPP, /**< the C++ language */
 } target_language_t;

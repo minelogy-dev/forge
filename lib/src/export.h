@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 The Forge development team */
 /* Additional permission under GPLv3+ §7 applies; see LICENSE. */
 
-#if defined _WIN32
+#if defined _MSC_VER
 #define SYMBOL_PUBLIC _declspec(dllexport)
 #else
 #define SYMBOL_PUBLIC __attribute__((visibility("default")))

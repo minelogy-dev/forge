@@ -30,6 +30,7 @@
 /* ------------------------ source file nodes ------------------------ */
 
 int is_source_ext(const char *name, target_language_t lang) {
+  if(lang == ALL) return 1;
   const char *dot = strrchr(name, '.');
   if (!dot)
     return 0;
