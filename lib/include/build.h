@@ -344,6 +344,7 @@ typedef enum {
   TARGET_LINK_LIBS,
   TARGET_LIBRARIES,
   TARGET_EXPORT_SYMBOL,
+  TARGET_OPTIONS,
   ARCHIVER_DETERMINISTIC,
   ARCHIVER_VERBOSE,
   ARCHIVER_OPTIONS,
@@ -685,8 +686,10 @@ char **_list_files(const char *dir);
  *   entry of that scope; a non-keyword line belongs wholly to the
  *   current scope (initially = Source);
  * - entries are applied as they are read (_add_sources /
- *   _add_include_path / _add_lib_path / _add_link_lib / option_tail
- *   appends); the test file itself is always the first source file;
+ *   _add_include_path / _add_lib_path / _add_link_lib appends; the
+ *   Option entries go to TARGET_OPTIONS, so they reach the compiler,
+ *   linker and assembler commands); the test file itself is always
+ *   the first source file;
  * - silently skipped when the extension is not in {.c,.cpp,.cc,.cxx};
  *   on a read failure or entry failure (OOM), returns NULL and clears
  *   the applied entries (free_target_contents);

@@ -53,5 +53,36 @@ strv_t *ar_archiver(const forge_context_t context) {
     strv_destroy(&args);
     return NULL;
   }
-  return argv_to_cmdline(&args);
+
+  /* ar rcs only replaces/adds same-named members: stale members
+     survive as ghosts (renamed sources, members under an older
+     naming scheme), and the link step then extracts the first
+     matching member (order within the archive), silently producing
+     a newer-archive-with-old-code binary. Delete the archive first
+     so every archive build starts from scratch. POSIX rm (GNU ar
+     itself is POSIX/MSYS territory; the MSYS/WSL rm covers
+     Windows). */
+  strv_t rm;
+  strv_init(&rm);
+  failed = strv_append(&rm, "rm") != 0;
+  if (!failed) {
+    char *out = shorten_path(context.root, context.output_file);
+    failed = !out || strv_append(&rm, "-f") != 0 ||
+             strv_append(&rm, out) != 0;
+    free(out);
+  }
+  if (failed) {
+    strv_destroy(&args);
+    strv_destroy(&rm);
+    return NULL;
+  }
+  strv_t *seq = calloc(3, sizeof(strv_t));
+  if (!seq) {
+    strv_destroy(&args);
+    strv_destroy(&rm);
+    return NULL;
+  }
+  seq[0] = rm;
+  seq[1] = args;
+  return seq;
 }

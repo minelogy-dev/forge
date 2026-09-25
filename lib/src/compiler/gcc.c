@@ -148,6 +148,8 @@ static strv_t *gcc_compile(const forge_context_t ctx) {
     free(obj);
     free(dpath);
   }
+  for (int i = 0; !failed && i < t->options.count; i++)
+    failed = strv_append_args(&args, t->options.strs[i]) != 0;
   for (int i = 0; !failed && i < ca->options.count; i++)
     failed = strv_append_args(&args, ca->options.strs[i]) != 0;
 
@@ -216,6 +218,8 @@ static strv_t *gcc_link(const forge_context_t ctx) {
   }
   if (!failed)
     failed = strv_append(&args, os_export_flag()) != 0;
+  for (int i = 0; !failed && i < t->options.count; i++)
+    failed = strv_append_args(&args, t->options.strs[i]) != 0;
   for (int i = 0; !failed && i < la->options.count; i++)
     failed = strv_append_args(&args, la->options.strs[i]) != 0;
 

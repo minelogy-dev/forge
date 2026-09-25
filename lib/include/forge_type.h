@@ -196,8 +196,10 @@ typedef struct {
   library_t **libs;   /**< list of introduced libraries */
   int libs_count;    /**< number of elements in libs */
 
-  strv_t options;    /**< extra compile options (passed to the compiler */
-                     /**< verbatim) */
+  strv_t options;    /**< whole-pipeline options (TARGET_OPTIONS): each */
+                     /**< entry passed verbatim to the compiler */
+                     /**< (compile), linker (link) and assembler */
+                     /**< (assembly) commands */
 
   source_t *sources;     /**< head of the source-file list (in insertion */
                          /**< order, appended by _add_source*; owned by the */

@@ -52,5 +52,30 @@ strv_t *llvm_ar_archiver(const forge_context_t context) {
     strv_destroy(&args);
     return NULL;
   }
-  return argv_to_cmdline(&args);
+
+  /* Same rationale as in ar_archiver (see ar.c): ar rcs keeps stale
+     members, so the archive is rebuilt from scratch every time. */
+  strv_t rm;
+  strv_init(&rm);
+  failed = strv_append(&rm, "rm") != 0;
+  if (!failed) {
+    char *out = shorten_path(context.root, context.output_file);
+    failed = !out || strv_append(&rm, "-f") != 0 ||
+             strv_append(&rm, out) != 0;
+    free(out);
+  }
+  if (failed) {
+    strv_destroy(&args);
+    strv_destroy(&rm);
+    return NULL;
+  }
+  strv_t *seq = calloc(3, sizeof(strv_t));
+  if (!seq) {
+    strv_destroy(&args);
+    strv_destroy(&rm);
+    return NULL;
+  }
+  seq[0] = rm;
+  seq[1] = args;
+  return seq;
 }

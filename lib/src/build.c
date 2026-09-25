@@ -551,6 +551,12 @@ int _set(target_t *target, const char *location, forge_option_t opt, int count,
       goto cleanup;
     }
     break;
+  case TARGET_OPTIONS:
+    if (strv_form_va(&target->options, count, valist)) {
+      ret = 1;
+      goto cleanup;
+    }
+    break;
   case ARCHIVER_DETERMINISTIC:
     target->toolchain.archiver_args->deterministic = va_arg(valist, int);
     break;
@@ -873,6 +879,12 @@ int _add(target_t *target, const char *location, forge_option_t opt, int count,
   case TARGET_EXPORT_SYMBOL:
     if (strv_form_va_append(&target->toolchain.linker_args->export_symbol,
                             count, valist)) {
+      ret = 1;
+      goto cleanup;
+    }
+    break;
+  case TARGET_OPTIONS:
+    if (strv_form_va_append(&target->options, count, valist)) {
       ret = 1;
       goto cleanup;
     }
@@ -2269,7 +2281,8 @@ typedef enum {
   TEST_SCOPE_INCLUDE,  /**< Include: header search paths (-I) */
   TEST_SCOPE_LIB_PATH, /**< Library: library search paths (-L) */
   TEST_SCOPE_LINK,     /**< Link: linked library names (-l) */
-  TEST_SCOPE_OPTION,   /**< Option: raw argument block at the end of the command */
+  TEST_SCOPE_OPTION,   /**< Option: whole-pipeline option entry
+                            (TARGET_OPTIONS: compiler + linker + assembler) */
 } test_scope_t;
 
 static char *trim_left(char *s) {
@@ -2297,8 +2310,9 @@ static void trim_right(char *s) {
      (initial scope = Source);
    - Entries apply line by line: Source->_add_sources,
      Include->_add_include_path, Library->_add_lib_path,
-     Link->_add_link_lib, Option->appended to target->option_tail
-     (the whole entry verbatim, no quoting);
+     Link->_add_link_lib, Option->TARGET_OPTIONS (whole-pipeline:
+     compiler / linker / assembler; the whole entry verbatim, no
+     quoting);
    - The test file itself is always the first source added (as in
      the plan.md command examples);
    - Files whose extension is not in {.c,.cpp,.cc,.cxx} are
@@ -2388,9 +2402,11 @@ char *parse_test_c(target_t *target, const char *file) {
           failed = 1;
         break;
       case TEST_SCOPE_OPTION:
-        /* args appended at the end of the command: all routed through
-           _add_option(COMPILER_OPTIONS) */
-        if (_add_option(target, entry) != 0)
+        /* whole-pipeline options (TARGET_OPTIONS): appended to the
+           compiler, linker and assembler commands, so flags that must
+           reach both compile and final link (e.g. -fsanitize) work
+           from the test header alone */
+        if (_add(target, LOCATION, TARGET_OPTIONS, 1, entry) != 0)
           failed = 1;
         break;
       }
