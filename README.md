@@ -14,6 +14,9 @@ itself.
 
 ## Quick Start
 
+Pull requests run compiler, sanitizer, static-analysis and secret checks.
+See [Continuous integration](docs/CI.md) for coverage and merge-protection setup.
+
 ```sh
 ./bootstrap.sh        # bootstrap from zero: host forge + runtime library + full build + tests
 ./make                # incremental build (re-running the ./make produced by "forge .")

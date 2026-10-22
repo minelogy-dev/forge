@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+  UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+
+jobs:
+  build-test:
+    name: Build and test (${{ matrix.cc }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+    env:
+      CC: ${{ matrix.cc }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install both supported toolchains
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y gcc-14 clang llvm binutils pkg-config
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+      - name: Configure the selected compiler
+        run: bash .github/scripts/configure.sh
+      - name: Reject compiler warnings
+        run: bash .github/scripts/check-c.sh
+      - name: Bootstrap the real build
+        run: sh bootstrap.sh --no-test
+      - name: Run all unit and scenario tests with sanitizers
+        run: ./make test -j 2 2>&1 | tee build/ci-tests.log
+      - name: Build and run the example
+        working-directory: examples/demo
+        run: |
+          ../../build/output/forge .
+          ./make -j 2
+          ./output/app | tee demo.log
+          grep -Fx 'hello from forge demo' demo.log
+      - name: Validate installation and Debian package
+        run: |
+          ./make install "$RUNNER_TEMP/forge-install"
+          "$RUNNER_TEMP/forge-install/bin/forge" --version
+          ./make gen_deb
+          dpkg-deb --info build/deb/forge_*.deb
+          dpkg-deb --contents build/deb/forge_*.deb
+      - name: Keep diagnostics after a failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: diagnostics-${{ matrix.cc }}
+          path: |
+            build/ci-tests.log
+            build/**/*.d
+            build/**/*.meta
+            test/edge_*/build.conf
+            test/edge_*/build.c
+          if-no-files-found: ignore
+          retention-days: 7
+
+  static-analysis:
+    name: GCC static analysis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install analyzer dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y gcc-14
+      - name: Check production code for unsafe memory and resource use
+        env:
+          CC: gcc-14
+        run: |
+          mkdir -p build
+          bash .github/scripts/check-c.sh analyze 2>&1 | tee build/ci-analyzer.log
+      - name: Keep analyzer diagnostics after a failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: analyzer-diagnostics
+          path: build/ci-analyzer.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  quality:
+    name: Workflow and secret checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install ShellCheck and pinned security tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y shellcheck
+          bash .github/scripts/install-tools.sh "$RUNNER_TEMP/ci-tools"
+      - name: Lint workflows and helper scripts
+        run: |
+          "$RUNNER_TEMP/ci-tools/actionlint" -color
+          shellcheck .github/scripts/*.sh
+      - name: Scan the complete Git history for credentials
+        run: '"$RUNNER_TEMP/ci-tools/gitleaks" git --redact --verbose'
+      - name: Reject whitespace errors in the proposed changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if test -n "$BASE_SHA" && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            git diff --check "$BASE_SHA" "$HEAD_SHA"
+          else
+            git show --format= --check "$HEAD_SHA"
+          fi
+
+  ci:
+    name: CI
+    if: always()
+    needs: [build-test, static-analysis, quality]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every check to pass
+        env:
+          BUILD_TEST: ${{ needs.build-test.result }}
+          STATIC_ANALYSIS: ${{ needs.static-analysis.result }}
+          QUALITY: ${{ needs.quality.result }}
+        run: |
+          test "$BUILD_TEST" = success
+          test "$STATIC_ANALYSIS" = success
+          test "$QUALITY" = success
