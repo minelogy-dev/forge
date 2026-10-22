@@ -65,12 +65,14 @@ int main(void) {
 
   forge_context_t ctx;
   mk_ctx(&ctx, t, FORGE_SHARED_LIB);
+  os_set_jobs(2);
 
   /* 1. Default GCC link leg: gcc -> -shared -> objs -> -o output;
      the export flag (os_export_flag) must be included */
   strv_t *seq = gcc_linker(ctx);
   TEST(seq != NULL && seq[0].strs != NULL);
   TEST(strcmp(seq[0].strs[0], "gcc") == 0);
+  TEST(find_arg(&seq[0], "-flto=2") >= 0);
   TEST(find_arg(&seq[0], "-shared") >= 0);
   TEST(find_arg(&seq[0], "a.o") >= 0 && find_arg(&seq[0], "b.o") >= 0);
   TEST(find_arg(&seq[0], "-rdynamic") >= 0); /* os_export_flag (Linux) */
@@ -98,6 +100,8 @@ int main(void) {
   t->toolchain.compiler = CLANG;
   seq = linker(ctx);
   TEST(seq != NULL && strcmp(seq[0].strs[0], "clang") == 0);
+  TEST(find_arg(&seq[0], "-flto") >= 0);
+  TEST(find_arg(&seq[0], "-flto=2") < 0);
   TEST(find_arg(&seq[0], "-shared") >= 0);
   free_seq(seq);
 
@@ -108,6 +112,8 @@ int main(void) {
   TEST(seq != NULL && strcmp(seq[0].strs[0], "gcc") == 0);
   free_seq(seq);
 
+  for (int i = 0; i < ctx.files_count; i++)
+    strv_destroy(&ctx.files[i].cflags);
   free_target_contents(t);
   PASS();
   return 0;

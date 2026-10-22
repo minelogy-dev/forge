@@ -23,8 +23,18 @@ static void rt(const forge_context_t ctx, const char *tool, const char *flags) {
   strv_t *seq = tool[0] == 'a' ? ar_archiver(ctx) : llvm_ar_archiver(ctx);
   TEST(seq != NULL);
   TEST(seq[0].strs != NULL);
-  TEST(strcmp(seq[0].strs[0], tool) == 0);
-  TEST(strcmp(seq[0].strs[1], flags) == 0);
+  TEST(seq[0].count == 3);
+  TEST(strcmp(seq[0].strs[0], "rm") == 0);
+  TEST(strcmp(seq[0].strs[1], "-f") == 0);
+  TEST(strcmp(seq[0].strs[2], "out.a") == 0);
+  TEST(seq[1].strs != NULL);
+  TEST(seq[1].count == 5);
+  TEST(strcmp(seq[1].strs[0], tool) == 0);
+  TEST(strcmp(seq[1].strs[1], flags) == 0);
+  TEST(strcmp(seq[1].strs[2], "out.a") == 0);
+  TEST(strcmp(seq[1].strs[3], "a.o") == 0);
+  TEST(strcmp(seq[1].strs[4], "b.o") == 0);
+  TEST(seq[2].strs == NULL);
   for (int i = 0; seq[i].strs; i++)
     strv_destroy(&seq[i]);
   free(seq);

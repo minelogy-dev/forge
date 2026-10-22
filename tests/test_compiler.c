@@ -113,7 +113,6 @@ int main(void) {
   int o3 = find_arg(&seq[0], "-O3", -1);
   TEST(io >= 0 && o3 > io);
   free_seq(seq);
-  strv_destroy(&ctx.files[0].cflags);
 
   /* 3. Dispatcher: compiler() routes on toolchain.compiler */
   seq = compiler(ctx);
@@ -129,10 +128,10 @@ int main(void) {
      generation failure path reports an explicit error instead of
      emitting a deceptively usable command */
   t->toolchain.compiler = MSVC;
-  memset(&ctx.files[0].cflags, 0, sizeof(strv_t));
   seq = compiler(ctx);
   TEST(seq == NULL);
 
+  strv_destroy(&ctx.files[0].cflags);
   free_target_contents(t);
   PASS();
   return 0;

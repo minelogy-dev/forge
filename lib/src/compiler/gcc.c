@@ -17,7 +17,7 @@
  *   optimization -> -D -> -I (target+libs) -> per-file cflags ->
  *   visibility/lto/pic flags -> -c|-S -> source file -> -o obj ->
  *   -MMD -MF obj.d -> trailing options;
- * - Link branch (FORGE_OBJ, EXE/SHARED): cc -> -flto(=N when
+ * - Link branch (FORGE_OBJ, EXE/SHARED): cc -> -flto(=N for GCC when
  *   os_jobs>1) -> -shared -> obj list -> -L (incl. libs) -> -l -> -o ->
  *   export symbol (os_export_flag) -> trailing linker options.
  * FORGE_STATIC_LIB belongs to the archiver; NULL is returned here.
@@ -27,6 +27,7 @@
  * MSVC uses compiler/msvc.c.
  */
 #include "forge_compiler.h"
+#include "forge_def.h"
 #include "forge_linker.h"
 #include "forge_os.h"
 #include "internal.h"
@@ -178,7 +179,7 @@ static strv_t *gcc_link(const forge_context_t ctx) {
   failed = strv_append(&args, forge_default_cc(t)) != 0;
 
   if (!failed && la->lto_enabled == ENABLE) {
-    if (os_jobs > 1) {
+    if (os_jobs > 1 && t->toolchain.compiler != CLANG) {
       char flto[32];
       snprintf(flto, sizeof(flto), "-flto=%d", os_jobs);
       failed = strv_append(&args, flto) != 0;

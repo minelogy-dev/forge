@@ -2,6 +2,23 @@
 /* Copyright (C) 2026 The Forge development team */
 /* Additional permission under GPLv3+ §7 applies; see LICENSE. */
 
+/* Keep targets and tests on the compiler selected in build.conf. */
+#ifndef CONF_compiler
+#define CONF_compiler GCC
+#endif
+#ifndef CONF_sanitize
+#define CONF_sanitize 0
+#endif
+#define TOOLCHAIN set_toolchain(CONF_compiler)
+#define LANGUAGE                                                               \
+  {                                                                            \
+    set_language(C);                                                           \
+    set_standard("c23");                                                       \
+    add_define("_DEFAULT_SOURCE", "1");                                        \
+    if (CONF_sanitize)                                                         \
+      add(TARGET_OPTIONS, 4, "-g", "-fsanitize=address,undefined",               \
+          "-fno-sanitize-recover=all", "-fno-omit-frame-pointer");               \
+  }
 #include <build.h>
 
 /* The version has a single source of truth: the version key in
@@ -24,7 +41,7 @@
 function(build) {
   parse_args(builtin_args);
   target("forge") {
-    set_toolchain(GCC);
+    set_toolchain(CONF_compiler);
     add_sources("src/forge.c");
     add_sources("src/cli.c");
     add_sources("src/parser.c");
@@ -45,7 +62,7 @@ add_define("FORGE_VERSION", "\"" FORGE_VERSION "\"");
       return -1;
   }
   target("main") {
-    set_toolchain(GCC);
+    set_toolchain(CONF_compiler);
     set_type(FORGE_STATIC_LIB);
     /* A static library must NOT carry -flto: its objects are linked by
        whichever compiler builds the consumer (e.g. clang, whose driver
@@ -63,7 +80,7 @@ add_define("FORGE_VERSION", "\"" FORGE_VERSION "\"");
       return -1;
   }
   target("forge") {
-    set_toolchain(GCC);
+    set_toolchain(CONF_compiler);
     set_type(FORGE_SHARED_LIB);
     add_sources_r("lib/src");
     add_include_path("lib/include");

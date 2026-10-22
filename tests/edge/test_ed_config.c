@@ -80,7 +80,9 @@ int main(void) {
   TEST(edge_write(dir, "build.conf", "") == 0);
   st = edge_forge(dir, out, sizeof(out));
   TEST(st == 0);
-  TEST(os_path_is_file(os_path_join(dir, "make")));
+  char *make_path = os_path_join(dir, "make");
+  TEST(make_path && os_path_is_file(make_path));
+  free(make_path);
   free(dir);
 
   /* 3. Unknown keys / lines without '=' / comments -> tolerated,
