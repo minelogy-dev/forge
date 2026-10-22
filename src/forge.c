@@ -27,7 +27,7 @@ typedef struct {
   char *argv;
 } opt_t;
 
-constexpr int opts_count = 256;
+enum { opts_count = 256 };
 opt_t opts[opts_count] = {
     ['V'] = {"version", 0, 0, NULL},
     ['h'] = {"help", 0, 0, NULL},
