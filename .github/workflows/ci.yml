@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cc: [gcc, clang]
+        cc: [gcc-14, clang-19]
     env:
       CC: ${{ matrix.cc }}
     steps:
@@ -39,8 +39,15 @@ jobs:
       - name: Install both supported toolchains
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y gcc-14 clang llvm binutils pkg-config
+          sudo apt-get install --no-install-recommends -y gcc-14 clang-19 llvm-19 libclang-rt-19-dev binutils pkg-config
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+          sudo update-alternatives --set gcc /usr/bin/gcc-14
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 190
+          sudo update-alternatives --set clang /usr/bin/clang-19
+      - name: Verify compiler versions used by generated builds
+        run: |
+          test "$(gcc -dumpversion | cut -d. -f1)" = 14
+          test "$(clang -dumpversion | cut -d. -f1)" = 19
       - name: Configure the selected compiler
         run: bash .github/scripts/configure.sh
       - name: Reject compiler warnings

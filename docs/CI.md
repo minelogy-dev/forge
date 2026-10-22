@@ -9,7 +9,7 @@ permission to publish code-scanning results. Pull-request code never runs via
 
 | Check | What it verifies |
 | --- | --- |
-| Build and test (gcc / clang) | A real build on Ubuntu 24.04 with GCC 14 and Clang 18, the complete test suite, ASan, UBSan and leak detection |
+| Build and test (gcc-14 / clang-19) | A real build on Ubuntu 24.04 with GCC 14 and Clang 19, the complete test suite, ASan, UBSan and leak detection |
 | Compiler warnings | Every production C translation unit compiles with `-Wall -Wextra -Werror` |
 | GCC static analysis | `-fanalyzer` checks production translation units; diagnostics fail the job |
 | Workflow and secret checks | Actionlint, ShellCheck, whitespace errors and Gitleaks over the complete Git history, with redacted output |
@@ -48,7 +48,7 @@ and dependency pins still deserve human review.
 
 ## Reproduce locally
 
-Install Linux build dependencies and a C23 compiler (GCC 14+ or Clang 18+).
+Install Linux build dependencies and a C23 compiler (GCC 14+ or Clang 19+).
 Save local `build.conf` changes before running `configure.sh`: it updates the
 compiler selection and enables Forge test instrumentation in that file.
 
