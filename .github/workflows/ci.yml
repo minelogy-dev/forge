@@ -32,6 +32,8 @@ jobs:
         cc: [gcc-14, clang-19]
     env:
       CC: ${{ matrix.cc }}
+      FORGE_TEST_REQUIRE_LTO: '1'
+      FORGE_TEST_LLD_PATH: /usr/bin/ld.lld-19
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -39,7 +41,7 @@ jobs:
       - name: Install both supported toolchains
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y gcc-14 clang-19 llvm-19 libclang-rt-19-dev binutils pkg-config
+          sudo apt-get install --no-install-recommends -y gcc-14 clang-19 llvm-19 lld-19 libclang-rt-19-dev binutils pkg-config
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
           sudo update-alternatives --set gcc /usr/bin/gcc-14
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 190
