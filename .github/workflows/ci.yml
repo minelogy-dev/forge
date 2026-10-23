@@ -39,9 +39,17 @@ jobs:
         with:
           persist-credentials: false
       - name: Install both supported toolchains
+        timeout-minutes: 5
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y gcc-14 clang-19 llvm-19 lld-19 libclang-rt-19-dev binutils pkg-config
+          # Use Ubuntu's official HTTPS mirror for LLVM package downloads.
+          if test -f /etc/apt/apt-mirrors.txt; then
+            printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          fi
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get \
+            -o DPkg::Lock::Timeout=120 -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 \
+            install --no-install-recommends -y gcc-14 clang-19 llvm-19 lld-19 libclang-rt-19-dev binutils pkg-config
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
           sudo update-alternatives --set gcc /usr/bin/gcc-14
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 190
