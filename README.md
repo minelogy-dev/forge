@@ -83,6 +83,10 @@ compiler=GCC
 compiler_path=/usr/bin/gcc
 ```
 
+`TARGET_LTO` remains an enable/disable switch: GCC uses native LTO and Clang
+uses ThinLTO. See [LTO and linker parallelism](docs/LTO.md) for linker selection,
+tool dependencies and the backend-specific mapping of `./make -j N`.
+
 Configuration keys can be overridden per platform by suffixing the key
 name (`compiler_windows=...`, `compiler_linux=...`, `compiler_mac_os=...`),
 falling back to the bare key for the platform's default. Every setting
