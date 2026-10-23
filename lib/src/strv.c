@@ -76,7 +76,7 @@ char* strv_get(strv_t* strv, int idx) {
 }
 int strv_find(strv_t* strv, const char* target) {
   if(strv == NULL || target == NULL) return -1;
-  for(size_t i = 0; i < strv->count; i++) {
+  for(int i = 0; i < strv->count; i++) {
     if(strcmp(strv->strs[i], target) == 0)
       return (int)i;
   }
@@ -96,7 +96,7 @@ int strv_replace_first(strv_t* strv, const char* target, const char* replacement
 int strv_replace_all(strv_t* strv, const char* target, const char* replacement) {
   if(strv == NULL || target == NULL || replacement == NULL) return -1;
   int num = 0;
-  for(size_t i = 0; i < strv->count; i++) {
+  for(int i = 0; i < strv->count; i++) {
     if(strcmp(strv->strs[i], target) == 0) {
       char* ptr = forge_strdup(replacement);
       if(ptr == NULL) return -1;

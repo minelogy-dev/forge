@@ -24,15 +24,17 @@
    2026-09-13). */
 
 int main(void) {
-  strv_t v;
+  strv_t v = {0};
   char *r = NULL;
 
   /* ---- strv family ---- */
-  TEST(strv_new() != NULL);
+  strv_t *allocated = strv_new();
+  TEST(allocated != NULL);
+  strv_free(allocated);
   strv_free(NULL); /* must be a no-op */
   TEST(strv_init(NULL) == -1);
   strv_destroy(NULL);        /* must be a no-op */
-  strv_destroy(&v);          /* an uninitialized stack strv must also be safe */
+  strv_destroy(&v);          /* a zero-initialized strv must also be safe */
   TEST(strv_append(NULL, "x") == 1);
   TEST(strv_init(&v) == 0);
   TEST(strv_append(&v, NULL) == 1);
@@ -62,7 +64,9 @@ int main(void) {
   r = os_path_join("a", NULL);
   TEST(r != NULL && strcmp(r, "a") == 0);
   free(r);
-  TEST(strcmp(os_path_basename(NULL), "") == 0); /* empty string, not NULL */
+  r = os_path_basename(NULL);
+  TEST(r && strcmp(r, "") == 0); /* owned empty string, not NULL */
+  free(r);
   TEST(os_path_is_absolute(NULL) == 0);
   TEST(os_path_is_under(NULL, "b") == 0);
   TEST(os_path_is_under("a", NULL) == 1); /* frozen observed value: NULL acts as an empty root */

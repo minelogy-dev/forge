@@ -1045,26 +1045,6 @@ static char *sub_dir(const target_t *t, const char *sub) {
   return forge_strdup(sub);
 }
 
-/* Target path under <output_intermediate_path> (when set) or
-   <output_path>/<fallback>/, with mirrored/flattened naming */
-static char *obj_path_for(const target_t *t, const char *file, const char *ext,
-                          const char *fallback) {
-  char *rel = os_path_file_rel(file, ext);
-  if (!rel)
-    return NULL;
-  char *base = (t->output_intermediate_path && *t->output_intermediate_path)
-                   ? forge_strdup(t->output_intermediate_path)
-                   : sub_dir(t, fallback);
-  if (!base) {
-    free(rel);
-    return NULL;
-  }
-  char *out = os_path_join(base, rel);
-  free(base);
-  free(rel);
-  return out;
-}
-
 /* Ensure the parent directory of path exists */
 static void ensure_parent_dir(const char *path) {
   if (!path)
@@ -1852,8 +1832,8 @@ static int needs_rebuild(const char *obj, const char *src, const char *cmd) {
         break;
       }
     }
-    for (char **p = deps; *p; p++)
-      free(*p);
+    for (int i = 0; i < dc; i++)
+      free(deps[i]);
     free(deps);
   }
 

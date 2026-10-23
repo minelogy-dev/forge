@@ -1,0 +1,51 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL (C/C++)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y gcc-14 binutils
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+      - name: Configure the build compiler
+        env:
+          CC: gcc
+        run: bash .github/scripts/configure.sh
+      - name: Initialize security and maintainability queries
+        uses: github/codeql-action/init@793b778da9c9275a0f276522b27cb5fc14bba279 # v4
+        with:
+          languages: c-cpp
+          build-mode: manual
+          queries: security-and-quality
+      - name: Build production code for analysis
+        run: sh bootstrap.sh --no-test
+      - name: Publish findings to code scanning and the pull request
+        uses: github/codeql-action/analyze@793b778da9c9275a0f276522b27cb5fc14bba279 # v4
+        with:
+          category: /language:c-cpp

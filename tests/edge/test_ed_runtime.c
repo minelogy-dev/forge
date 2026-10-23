@@ -117,6 +117,17 @@ int main(void) {
   TEST(out_has(out, "-c src/main.c"));
   free(dir);
 
+  /* Empty .d means no header dependencies; repeated incremental
+     builds must neither dereference NULL nor rebuild the source. */
+  TEST(init_real("rt_dempty") == 0);
+  dir = os_path_abs("test/edge_rt_dempty");
+  TEST(edge_forge(dir, out, sizeof(out)) == 0);
+  TEST(edge_make(dir, "make", out, sizeof(out)) == 0);
+  TEST(edge_write(dir, "opt/app/src/main.o.d", " \n\t") == 0);
+  TEST(edge_make(dir, "make", out, sizeof(out)) == 0);
+  TEST(!out_has(out, "-c src/main.c"));
+  free(dir);
+
   /* 5. Corrupt .d -> conservative rebuild, success */
   TEST(init_real("rt_dbad") == 0);
   dir = os_path_abs("test/edge_rt_dbad");

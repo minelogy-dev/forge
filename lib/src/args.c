@@ -67,7 +67,6 @@ int forge_parse_args(int argc, char **argv, opt_t *opts, int opts_count) {
       if (argv[i][1] == '-') { // long
         if (argv[i][2] != '\0') {
           char *eq = strchr(argv[i], '=');
-          size_t name_len = eq ? (size_t)(eq - argv[i]) : strlen(argv[i]);
           char *value = eq ? eq + 1 : NULL;
           if (eq)
             *eq = '\0';
@@ -99,13 +98,17 @@ int forge_parse_args(int argc, char **argv, opt_t *opts, int opts_count) {
 
           opt_t *target = &opts[match_idx];
           if (target->argv == NULL) {
-            target->argv = malloc(8 * sizeof(size_t));
-            memset(target->argv, -1, sizeof(size_t) * 8);
+            target->argv = malloc(8 * sizeof(*target->argv));
+            if (!target->argv) {
+              fprintf(stderr, "%s: malloc failed\n", argv[0]);
+              exit(EXIT_FAILURE);
+            }
+            memset(target->argv, -1, sizeof(*target->argv) * 8);
             target->argv[7] = NULL;
           }
           if (target->argv[target->argc] == NULL) {
             char **ptr =
-                realloc(target->argv, (target->argc * 2 + 2) * sizeof(size_t));
+                realloc(target->argv, (target->argc * 2 + 2) * sizeof(*target->argv));
             if (ptr == NULL) {
               fprintf(stderr, "%s: realloc failed\n", argv[0]);
               exit(EXIT_FAILURE);
@@ -142,12 +145,16 @@ int forge_parse_args(int argc, char **argv, opt_t *opts, int opts_count) {
         opt_t *target = &opts[(unsigned char)argv[i][1]];
         if (target->takes_arg) {
                         if(target->argv == NULL) {
-                target->argv = malloc(8 * sizeof(size_t));
-                memset(target->argv, -1, sizeof(size_t) * 8);
+                target->argv = malloc(8 * sizeof(*target->argv));
+                if (!target->argv) {
+                  fprintf(stderr, "%s: malloc failed\n", argv[0]);
+                  exit(EXIT_FAILURE);
+                }
+                memset(target->argv, -1, sizeof(*target->argv) * 8);
                 target->argv[7] = NULL;
               }
               if(target->argv[target->argc] == NULL) {
-                char **ptr = realloc(target->argv, (target->argc * 2 + 2) * sizeof(size_t));
+                char **ptr = realloc(target->argv, (target->argc * 2 + 2) * sizeof(*target->argv));
                 if(ptr == NULL) {
                   fprintf(stderr, "%s: realloc failed\n", argv[0]);
                   exit(EXIT_FAILURE);

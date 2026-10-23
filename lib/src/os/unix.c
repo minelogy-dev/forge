@@ -748,17 +748,27 @@ typedef struct {
 /* append data; -1 on failure (the old buffer is kept; the caller
    does the uniform cleanup) */
 static int shell_buf_append(shell_buf *b, const char *data, size_t n) {
+  if (b->len == SIZE_MAX || n > SIZE_MAX - b->len - 1)
+    return -1;
   if (b->len + n + 1 > b->cap) {
     size_t ncap = b->cap ? b->cap : 256;
-    while (ncap < b->len + n + 1)
+    while (ncap < b->len + n + 1) {
+      if (ncap > SIZE_MAX / 2) {
+        ncap = b->len + n + 1;
+        break;
+      }
       ncap *= 2;
+    }
     char *nb = realloc(b->buf, ncap);
     if (!nb)
       return -1;
     b->buf = nb;
     b->cap = ncap;
   }
-  memcpy(b->buf + b->len, data, n);
+  if (!b->buf)
+    return -1;
+  if (n)
+    memcpy(b->buf + b->len, data, n);
   b->len += n;
   return 0;
 }
@@ -782,8 +792,16 @@ char *os_shell(char **argv) {
   char *shell_argv[] = {(char *)"sh", (char *)"-c", line, NULL};
 
   int errpipe[2] = {-1, -1}, outpipe[2] = {-1, -1};
-  if (pipe(errpipe) != 0 || pipe(outpipe) != 0)
-    goto fail;
+  if (pipe(errpipe) != 0) {
+    free(line);
+    return NULL;
+  }
+  if (pipe(outpipe) != 0) {
+    close(errpipe[0]);
+    close(errpipe[1]);
+    free(line);
+    return NULL;
+  }
 
   pid_t pid = fork();
   if (pid < 0)
@@ -853,6 +871,12 @@ char *os_shell(char **argv) {
     }
   }
 
+  /* poll may fail before EOF; release both remaining read ends. */
+  if (err_open)
+    close(errpipe[0]);
+  if (out_open)
+    close(outpipe[0]);
+
   /* reap the child (pipe EOF before waitpid: no deadlock risk in
      the same process) */
   while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {}
@@ -873,14 +897,10 @@ char *os_shell(char **argv) {
   return res;
 
 fail:
-  if (errpipe[0] >= 0) {
-    close(errpipe[0]);
-    close(errpipe[1]);
-  }
-  if (outpipe[0] >= 0) {
-    close(outpipe[0]);
-    close(outpipe[1]);
-  }
+  close(errpipe[0]);
+  close(errpipe[1]);
+  close(outpipe[0]);
+  close(outpipe[1]);
   free(line);
   return NULL;
 }

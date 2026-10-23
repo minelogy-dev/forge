@@ -2,7 +2,7 @@
 // Source lib/src/strv.c
 // Source lib/src/args.c
 // Include lib/include
-// Option -O2 -flto=8
+// Option -O2 -flto
 #include <build.h>
 
 #include <stdlib.h>
@@ -20,7 +20,7 @@ int main(void) {
   target_t *t = new_target(NULL);
   TEST(t != NULL);
   TEST(t->name == NULL);
-  free(t);
+  free_target_contents(t);
 
   PASS();
   return 0;

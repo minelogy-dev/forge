@@ -45,7 +45,6 @@ int forge_parse_args(int argc, char *argv[], opt_t *opts, int opts_count) {
       if (argv[i][1] == '-') { // long
         if (argv[i][2] != '\0') {
           char *eq = strchr(argv[i], '=');
-          size_t name_len = eq ? (size_t)(eq - argv[i]) : strlen(argv[i]);
           char *value = eq ? eq + 1 : NULL;
           if (eq)
             *eq = '\0';
@@ -261,7 +260,7 @@ static char *resolve_lib(int compiler) {
     }
   }
 
-  char *dirs[7];
+  char *dirs[8];
   int n = 0;
   if (prefix && *prefix) {
     if (compiler == MSVC)
@@ -281,6 +280,8 @@ static char *resolve_lib(int compiler) {
   dirs[n++] = forge_strdup("/usr/lib");
 
   for (int i = 0; i < n; i++) {
+    if (!dirs[i])
+      continue;
     for (int k = 0; names[k]; k++) {
       char *p = path_join(dirs[i], names[k]);
       if (!p)
@@ -294,13 +295,12 @@ static char *resolve_lib(int compiler) {
       free(p);
     }
   }
-  free(exe_dir);
   fprintf(stderr, "%s: library", program_name);
   for (int k = 0; names[k]; k++)
     fprintf(stderr, " %s", names[k]);
   fprintf(stderr, " not found in");
   for (int i = 0; i < n; i++)
-    fprintf(stderr, " %s", dirs[i]);
+    fprintf(stderr, " %s", dirs[i] ? dirs[i] : "(null)");
   fprintf(stderr, " (set FORGE_PREFIX or install to /usr/local/lib)\n");
   for (int i = 0; i < n; i++)
     free(dirs[i]);
@@ -674,6 +674,10 @@ int forge_main(char *target) {
   int compiler = UNKNOWN;
   char *compiler_path = nullptr;
   char *buf = path_join(target, "build.conf");
+  if (!buf) {
+    fprintf(stderr, "%s: out of memory\n", program_name);
+    return -1;
+  }
   FILE *config = fopen(buf, "r");
   if (config) {
     fseek(config, 0, SEEK_END);

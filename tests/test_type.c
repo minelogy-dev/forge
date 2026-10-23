@@ -15,7 +15,9 @@
 #include <string.h>
 
 int main(void) {
-  TEST(new_target(NULL) != NULL);
+  target_t *unnamed = new_target(NULL);
+  TEST(unnamed != NULL);
+  free_target_contents(unnamed);
 
   target_t *t = new_target("abc");
   TEST(t != NULL);
