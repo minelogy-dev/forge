@@ -11,14 +11,14 @@
 #endif
 #define TOOLCHAIN set_toolchain(CONF_compiler)
 #define LANGUAGE                                                               \
-  {                                                                            \
+  do {                                                                         \
     set_language(C);                                                           \
     set_standard("c23");                                                       \
     add_define("_DEFAULT_SOURCE", "1");                                        \
     if (CONF_sanitize)                                                         \
       add(TARGET_OPTIONS, 4, "-g", "-fsanitize=address,undefined",               \
           "-fno-sanitize-recover=all", "-fno-omit-frame-pointer");               \
-  }
+  } while (0)
 #include <build.h>
 
 /* The version has a single source of truth: the version key in
