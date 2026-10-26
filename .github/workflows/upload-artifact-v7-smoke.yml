@@ -1,0 +1,98 @@
+name: Upload artifact v7 smoke
+on:
+  push:
+    branches: [test/upload-artifact-v7-smoke-20261026]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Create representative diagnostic files
+        run: |
+          mkdir -p build/nested test/edge_smoke
+          printf 'unit diagnostics\n' > build/ci-tests.log
+          printf 'dependency\n' > build/nested/smoke.d
+          printf 'metadata\n' > build/nested/smoke.meta
+          printf 'config\n' > test/edge_smoke/build.conf
+          printf 'source\n' > test/edge_smoke/build.c
+          printf 'analyzer diagnostics\n' > build/ci-analyzer.log
+      - name: Intentionally trigger failure path
+        run: exit 1
+      - name: Upload multi-file diagnostics on failure
+        id: multi
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: diagnostics-gcc-14
+          path: |
+            build/ci-tests.log
+            build/**/*.d
+            build/**/*.meta
+            test/edge_*/build.conf
+            test/edge_*/build.c
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload analyzer diagnostics on failure
+        id: single
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: analyzer-diagnostics
+          path: build/ci-analyzer.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Ignore missing files on failure
+        id: missing
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: missing-diagnostics
+          path: absent/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Verify upload outcomes and downloaded ZIP contents
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MULTI_ID: ${{ steps.multi.outputs.artifact-id }}
+          SINGLE_ID: ${{ steps.single.outputs.artifact-id }}
+          MISSING_ID: ${{ steps.missing.outputs.artifact-id }}
+          MULTI_OUTCOME: ${{ steps.multi.outcome }}
+          SINGLE_OUTCOME: ${{ steps.single.outcome }}
+          MISSING_OUTCOME: ${{ steps.missing.outcome }}
+        run: |
+          python3 - <<'PY'
+          import os, json, urllib.request, zipfile, io, datetime
+          for key in ('MULTI_OUTCOME', 'SINGLE_OUTCOME', 'MISSING_OUTCOME'):
+              assert os.environ[key] == 'success', (key, os.environ[key])
+          assert not os.environ['MISSING_ID']
+          expected_multi = {
+              'build/ci-tests.log': b'unit diagnostics\n',
+              'build/nested/smoke.d': b'dependency\n',
+              'build/nested/smoke.meta': b'metadata\n',
+              'test/edge_smoke/build.conf': b'config\n',
+              'test/edge_smoke/build.c': b'source\n',
+          }
+          api = os.environ['GITHUB_API_URL'] + '/repos/' + os.environ['GITHUB_REPOSITORY']
+          headers = {'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'}
+          for key, name, expected in [('MULTI_ID', 'diagnostics-gcc-14', expected_multi),
+                                      ('SINGLE_ID', 'analyzer-diagnostics', {'ci-analyzer.log': b'analyzer diagnostics\n'})]:
+              artifact_id = os.environ[key]
+              assert artifact_id, key
+              metadata = json.load(urllib.request.urlopen(urllib.request.Request(api + '/actions/artifacts/' + artifact_id, headers=headers)))
+              assert metadata['name'] == name, metadata
+              created = datetime.datetime.fromisoformat(metadata['created_at'].replace('Z', '+00:00'))
+              expires = datetime.datetime.fromisoformat(metadata['expires_at'].replace('Z', '+00:00'))
+              assert abs((expires-created).total_seconds()/86400 - 7) < 0.1
+              req = urllib.request.Request(api + '/actions/artifacts/' + artifact_id + '/zip', headers=headers)
+              data = urllib.request.urlopen(req).read()
+              archive = zipfile.ZipFile(io.BytesIO(data))
+              assert set(archive.namelist()) == set(expected), archive.namelist()
+              for path, value in expected.items():
+                  assert archive.read(path) == value, path
+              print('PASS:', name, 'ZIP paths/content and 7-day retention verified')
+          print('PASS: missing files ignored; all three upload steps succeeded after intentional failure')
+          PY
