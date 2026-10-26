@@ -88,7 +88,12 @@ jobs:
               expires = datetime.datetime.fromisoformat(metadata['expires_at'].replace('Z', '+00:00'))
               assert abs((expires-created).total_seconds()/86400 - 7) < 0.1
               req = urllib.request.Request(api + '/actions/artifacts/' + artifact_id + '/zip', headers=headers)
-              data = urllib.request.urlopen(req).read()
+              class SafeRedirect(urllib.request.HTTPRedirectHandler):
+                  def redirect_request(self, req, fp, code, msg, headers, newurl):
+                      redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+                      redirected.remove_header('Authorization')
+                      return redirected
+              data = urllib.request.build_opener(SafeRedirect()).open(req).read()
               archive = zipfile.ZipFile(io.BytesIO(data))
               assert set(archive.namelist()) == set(expected), archive.namelist()
               for path, value in expected.items():
