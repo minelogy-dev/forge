@@ -100,9 +100,53 @@ int main(void) {
   t->toolchain.compiler = CLANG;
   seq = linker(ctx);
   TEST(seq != NULL && strcmp(seq[0].strs[0], "clang") == 0);
-  TEST(find_arg(&seq[0], "-flto") >= 0);
+  TEST(find_arg(&seq[0], "-flto=thin") >= 0);
+  TEST(find_arg(&seq[0], "-flto") < 0);
   TEST(find_arg(&seq[0], "-flto=2") < 0);
+  TEST(find_arg(&seq[0], "-Wl,-plugin-opt,jobs=2") >= 0);
+  TEST(find_arg(&seq[0], "-Wl,--threads=2") < 0);
   TEST(find_arg(&seq[0], "-shared") >= 0);
+  free_seq(seq);
+
+  /* An explicit LLD selection must select the actual linker and translate
+     both worker and ThinLTO budgets, without GNU plugin-only options. */
+  TEST(_set(t, LOCATION, TARGET_LINKER, 1, LLD) == 0);
+  seq = linker(ctx);
+  TEST(seq != NULL);
+  TEST(find_arg(&seq[0], "-fuse-ld=lld") >= 0);
+  TEST(find_arg(&seq[0], "-flto=thin") >= 0);
+  TEST(find_arg(&seq[0], "-Wl,--thinlto-jobs=2") >= 0);
+  TEST(find_arg(&seq[0], "-Wl,--threads=2") >= 0);
+  TEST(find_arg(&seq[0], "-Wl,-plugin-opt,jobs=2") < 0);
+  free_seq(seq);
+
+  /* The path stays a single argument, including spaces; no probing is
+     needed to use a versioned LLD executable. */
+  TEST(_set(t, LOCATION, TARGET_LINKER_PATH, 1,
+            "/opt/LLVM Tools/ld.lld-19") == 0);
+  os_set_jobs(1);
+  seq = linker(ctx);
+  TEST(seq != NULL);
+  TEST(find_arg(&seq[0], "--ld-path=/opt/LLVM Tools/ld.lld-19") >= 0);
+  TEST(find_arg(&seq[0], "-Wl,--thinlto-jobs=1") >= 0);
+  TEST(find_arg(&seq[0], "-Wl,--threads=1") >= 0);
+  free_seq(seq);
+
+  TEST(_set(t, LOCATION, TARGET_LTO, 1, DISABLE) == 0);
+  seq = linker(ctx);
+  TEST(seq != NULL);
+  TEST(find_arg(&seq[0], "-fuse-ld=lld") >= 0);
+  TEST(find_arg(&seq[0], "-Wl,--threads=1") >= 0);
+  TEST(find_arg(&seq[0], "-flto=thin") < 0);
+  TEST(find_arg(&seq[0], "-Wl,--thinlto-jobs=1") < 0);
+  free_seq(seq);
+
+  TEST(_set(t, LOCATION, TARGET_LINKER, 1, LD) == 0);
+  TEST(_set(t, LOCATION, TARGET_LTO, 1, ENABLE) == 0);
+  seq = linker(ctx);
+  TEST(seq != NULL);
+  TEST(find_arg(&seq[0], "-Wl,-plugin-opt,jobs=1") >= 0);
+  TEST(find_arg(&seq[0], "-Wl,--threads=1") < 0);
   free_seq(seq);
 
   /* 4. Dispatcher: linker() routes on toolchain.linker */
@@ -110,6 +154,9 @@ int main(void) {
   t->toolchain.compiler = GCC;
   seq = linker(ctx);
   TEST(seq != NULL && strcmp(seq[0].strs[0], "gcc") == 0);
+  TEST(find_arg(&seq[0], "-flto") >= 0);
+  TEST(find_arg(&seq[0], "-flto=thin") < 0);
+  TEST(find_arg(&seq[0], "--ld-path=/opt/LLVM Tools/ld.lld-19") < 0);
   free_seq(seq);
 
   for (int i = 0; i < ctx.files_count; i++)

@@ -4,11 +4,10 @@
 
 /**
  * @file linker/clang.c
- * @brief clang_linker() implementation: a placeholder -- reuses the
- *        compiler link branch.
+ * @brief Clang link command generation through the compiler driver.
  *
- * Same as linker/gcc.c: linking actually goes through the compiler
- * (the clang backend); a real lld wrapper will replace it later.
+ * The shared link branch uses Clang's backend policy to select an
+ * explicitly requested LLD and to translate LTO/parallelism options.
  */
 #include "forge_linker.h"
 #include "forge_compiler.h"

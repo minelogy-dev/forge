@@ -83,6 +83,16 @@ int strv_append_args(strv_t *args, const char *text);
 const char *forge_default_cc(const target_t *t);
 
 /**
+ * @brief Append Clang-specific options to the shared CC command builder.
+ *
+ * ENABLE selects ThinLTO. Link options select an explicitly requested LLD
+ * or linker path and translate os_jobs for the supported platform/linker.
+ * Does not execute or probe tools; returns 0 on success, -1 on allocation
+ * failure. The caller retains ownership of args.
+ */
+int forge_clang_options(strv_t *args, const forge_context_t context);
+
+/**
  * @brief Return whether the current MSVC compiler supports
  * /sourceDependencies (generating .d dependencies).
  *

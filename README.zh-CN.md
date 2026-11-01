@@ -68,6 +68,10 @@ compiler=GCC
 compiler_path=/usr/bin/gcc
 ```
 
+`TARGET_LTO` 保持启用/禁用开关：GCC 使用原生 LTO，Clang 使用 ThinLTO。
+链接器选择、工具依赖及 `./make -j N` 的后端映射见
+[LTO 与链接并行度](docs/LTO.md)。
+
 支持按平台加后缀覆盖(`compiler_windows=…`、`compiler_linux=…`、
 `compiler_mac_os=…`),缺省值平台的同名键兜底。所有配置项会以
 `-DCONF_<KEY>=<VALUE>` 的形式,作为编译 build.c 时的宏注入(与

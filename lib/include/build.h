@@ -335,7 +335,8 @@ typedef enum {
   TARGET_OUTPUT_PATH,
   TARGET_OUTPUT_FINAL_PATH,
   TARGET_OUTPUT_INTERMEDIATE_PATH,
-  TARGET_LTO,
+  TARGET_LTO, /**< ENABLE / DISABLE for compile and link: GCC native LTO,
+                  Clang ThinLTO; parallelism follows the backend's -j mapping */
   TARGET_SOURCES,
   TARGET_SOURCE_PATHS,
   TARGET_SOURCE_PATHS_R,

@@ -137,9 +137,9 @@ extern FORGE_TLS int os_verbose;
  * Range: >= 1. Affects two places:
  * - build.c's compile pass runs N-way in parallel (N = min(os_jobs,
  *   number of files to compile));
- * - the link pass: for gcc/clang with LTO enabled and N > 1,
- *   `-flto` is rewritten to `-flto=N`; for MSVC with N > 1,
- *   `/CGTHREADS:N` is appended (cap 8).
+ * - the link pass: GCC LTO uses `-flto=N` when N > 1; Clang selects
+ *   ThinLTO and on Linux passes N to the LLVM GNU linker plugin or
+ *   explicitly selected ELF LLD. ELF LLD's worker pool also uses N.
  * Set by os_set_jobs(); defined in lib/src/args.c.
  */
 extern int os_jobs;

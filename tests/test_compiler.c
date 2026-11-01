@@ -121,6 +121,17 @@ int main(void) {
   t->toolchain.compiler = CLANG;
   seq = compiler(ctx);
   TEST(seq != NULL && strcmp(seq[0].strs[0], "clang") == 0);
+  TEST(find_arg(&seq[0], "-flto=thin", -1) >= 0);
+  TEST(find_arg(&seq[0], "-flto", -1) < 0);
+  TEST(find_arg(&seq[0], "-Wl,-plugin-opt,jobs=1", -1) < 0);
+  free_seq(seq);
+
+  /* The existing switch disables Clang's backend policy at compile time. */
+  TEST(_set(t, LOCATION, TARGET_LTO, 1, DISABLE) == 0);
+  seq = compiler(ctx);
+  TEST(seq != NULL);
+  TEST(find_arg(&seq[0], "-flto=thin", -1) < 0);
+  TEST(find_arg(&seq[0], "-flto", -1) < 0);
   free_seq(seq);
 
   /* 4. MSVC backend: stub (disabled, never exercised on this platform).

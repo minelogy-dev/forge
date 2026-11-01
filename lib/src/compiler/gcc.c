@@ -17,8 +17,8 @@
  *   optimization -> -D -> -I (target+libs) -> per-file cflags ->
  *   visibility/lto/pic flags -> -c|-S -> source file -> -o obj ->
  *   -MMD -MF obj.d -> trailing options;
- * - Link branch (FORGE_OBJ, EXE/SHARED): cc -> -flto(=N for GCC when
- *   os_jobs>1) -> -shared -> obj list -> -L (incl. libs) -> -l -> -o ->
+ * - Link branch (FORGE_OBJ, EXE/SHARED): cc -> backend LTO/linker
+ *   options -> -shared -> obj list -> -L (incl. libs) -> -l -> -o ->
  *   export symbol (os_export_flag) -> trailing linker options.
  * FORGE_STATIC_LIB belongs to the archiver; NULL is returned here.
  *
@@ -98,7 +98,9 @@ static strv_t *gcc_compile(const forge_context_t ctx) {
 
   if (!failed && ca->visibility == HIDDEN)
     failed = strv_append(&args, "-fvisibility=hidden") != 0;
-  if (!failed && ca->lto_enabled == ENABLE)
+  if (!failed && t->toolchain.compiler == CLANG)
+    failed = forge_clang_options(&args, ctx) != 0;
+  else if (!failed && ca->lto_enabled == ENABLE)
     failed = strv_append(&args, "-flto") != 0;
   if (!failed && (ca->pic_enabled != 0 ||
                   ctx.target_type == FORGE_SHARED_LIB))
@@ -178,8 +180,10 @@ static strv_t *gcc_link(const forge_context_t ctx) {
 
   failed = strv_append(&args, forge_default_cc(t)) != 0;
 
-  if (!failed && la->lto_enabled == ENABLE) {
-    if (os_jobs > 1 && t->toolchain.compiler != CLANG) {
+  if (!failed && t->toolchain.compiler == CLANG) {
+    failed = forge_clang_options(&args, ctx) != 0;
+  } else if (!failed && la->lto_enabled == ENABLE) {
+    if (os_jobs > 1) {
       char flto[32];
       snprintf(flto, sizeof(flto), "-flto=%d", os_jobs);
       failed = strv_append(&args, flto) != 0;
