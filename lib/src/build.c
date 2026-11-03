@@ -1827,7 +1827,7 @@ static int needs_rebuild(const char *obj, const char *src, const char *cmd) {
       goto out;
     }
     for (int i = 0; i < dc; i++) {
-      if (os_mtime_ms(deps[i]) > om) {
+      if (!os_path_is_file(deps[i]) || os_mtime_ms(deps[i]) > om) {
         rebuild = 1;
         break;
       }

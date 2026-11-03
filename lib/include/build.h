@@ -124,8 +124,8 @@
  * The input/output table of forge_parse_args(); slots are indexed by
  * key (filled inside the parse_args macro by the OPT / builtin_args
  * macros with designated-initializer syntax):
- * - `long_name == NULL` means the slot is unused (other fields are
- *   treated as 0);
+ * - `long_name == NULL` means the option has no long form; short
+ *   options are selected by their character index independently;
  * - when `takes_arg` is non-zero, the parsed argument is written to
  *   `arg` (pointing into argv, not written back; with `--jobs=8`, the
  *   '=' in argv is rewritten to '\0' as the split);
@@ -134,7 +134,7 @@
  */
 typedef struct {
   const char *long_name; /**< long option name (without --); NULL means */
-                         /**< the slot is unused */
+                         /**< the option has no long form */
   int takes_arg;         /**< whether the option takes an argument */
   int flag_store;        /**< number of hits (count/boolean for no-arg */
                          /**< options) */

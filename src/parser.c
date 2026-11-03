@@ -26,19 +26,16 @@ static char *dup_n(const char *s, size_t n) {
   return out;
 }
 
-/* If the line containing the key match has a '#' between its start
-   and the match, the match is inside a comment and is invalid (same
-   rule as conf_defines in forge.c: '#' starts a comment cut off at
-   the end of the line), preventing commented lines such as
-   `# compiler=MSVC` from silently taking effect as configuration. */
-static int hash_before_key(const char *p, const char *buf) {
+/* Keys must begin a line after optional indentation. Matches inside
+   comments, other key names, or values are not configuration keys. */
+static int is_key_start(const char *p, const char *buf) {
   const char *q = p;
   while (q > buf && q[-1] != '\n')
     q--;
   for (; q < p; q++)
-    if (*q == '#')
-      return 1;
-  return 0;
+    if (*q != ' ' && *q != '\t')
+      return 0;
+  return 1;
 }
 
 static char *get_value(char *buf, const char *key) {
@@ -48,7 +45,7 @@ static char *get_value(char *buf, const char *key) {
   if (klen == 0) return NULL;
   char *p = buf;
   while ((p = strstr(p, key)) != NULL) {
-    if (p[klen] == '=' && !hash_before_key(p, buf))
+    if (p[klen] == '=' && is_key_start(p, buf))
       break;
     p += klen;
   }

@@ -40,6 +40,9 @@ void strv_destroy(strv_t *strv) {
     }
   }
   free(strv->strs);
+  strv->strs = NULL;
+  strv->count = 0;
+  strv->capacity = 0;
 }
 
 int strv_append(strv_t* strv, const char* str) {
@@ -62,7 +65,7 @@ int strv_append_non_copy(strv_t* strv, char* str) {
 
 int strv_set(strv_t* strv, int idx, const char* str) {
   if(strv == NULL || str == NULL) return -1;
-  if(idx < 0 || idx > strv->count) return -1;
+  if(idx < 0 || idx >= strv->count) return -1;
   char* ptr = forge_strdup(str);
   if(ptr == NULL) return -1;
   free(strv->strs[idx]);
