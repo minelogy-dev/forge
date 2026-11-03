@@ -132,6 +132,14 @@ int main(void) {
   TEST(st != 0);
   TEST(out_has(out, "not found") || out_has(out, "undefined"));
 
+  /* A deleted header must invalidate the cached object and report the
+     compiler error, rather than link a stale successful build. */
+  char *header = os_path_join(dir, "include/flow.h");
+  TEST(header && os_remove_r(header) == 0);
+  free(header);
+  TEST(edge_make(dir, "make", out, sizeof(out)) != 0);
+  TEST(out_has(out, "flow.h"));
+
   free(dir);
   PASS();
   return 0;
